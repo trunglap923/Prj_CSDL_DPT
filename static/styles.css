@@ -1,0 +1,10 @@
+#result {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+#result div {
+    text-align: center;
+}

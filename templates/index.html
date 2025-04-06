@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tìm kiếm ảnh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Tìm kiếm ảnh hoa quả</h2>
+        <input type="file" id="imageUpload">
+        <button onclick="uploadImage()">Tìm kiếm</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function uploadImage() {
+            let input = document.getElementById("imageUpload");
+            let file = input.files[0];
+            if (!file) {
+                alert("Vui lòng chọn một ảnh!");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/search", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = `<h3>Ảnh đã tải lên:</h3>
+                                       <img src="static/uploads/${data.uploaded_image}" width="200">
+                                       <h3>Kết quả:</h3>`;
+
+                data.results.forEach(item => {
+                    resultDiv.innerHTML += `<div>
+                                                <p>Similarity: ${item.similarity.toFixed(4)}</p>
+                                                <img src="${item.path}" width="200">
+                                            </div>`;
+                });
+            })
+            .catch(error => console.error("Lỗi:", error));
+        }
+    </script>
+</body>
+</html>
