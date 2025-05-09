@@ -1,8 +1,7 @@
 from flask import Flask, request, render_template, jsonify, send_from_directory
-from search import find_similar_images
 from PIL import Image
 import os
-import shutil
+from HamCanThiet import normalize_image,find_similar_images
 
 app = Flask(__name__)
 
@@ -32,8 +31,9 @@ def search_image():
     file.save(file_path)
 
     # Tìm ảnh tương tự
-    image = Image.open(file_path).convert("RGB")
-    results = find_similar_images(image)
+    image = Image.open(file_path)
+    normalized_image=normalize_image(image)
+    results = find_similar_images(normalized_image)
 
     return jsonify({"results": results, "uploaded_image": file.filename})
 
