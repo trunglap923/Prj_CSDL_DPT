@@ -1,56 +1,208 @@
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tìm kiếm ảnh</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tìm kiếm ảnh hoa quả</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(to right, #f8f9fa, #e9f5ff);
+        color: #333;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 40px 20px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1200px;
+      }
+
+      h2 {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 32px;
+        color: #2a2a2a;
+      }
+
+      .upload-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 32px;
+      }
+
+      .upload-box input[type="file"] {
+        flex: 1 1 400px;
+        max-width: 500px;
+        padding: 10px 14px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        background-color: #fff;
+        font-size: 14px;
+      }
+
+      .upload-box input[type="file"]::file-selector-button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        margin-right: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.3s ease;
+      }
+
+      .upload-box input[type="file"]::file-selector-button:hover {
+        background: #005ecb;
+      }
+
+      .upload-box button {
+        background: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .upload-box button:hover {
+        background: #1e7e34;
+      }
+
+      h3 {
+        margin-top: 32px;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #444;
+        border-left: 5px solid #007bff;
+        padding-left: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .result-item {
+        background: #fff;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .result-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+      }
+
+      .image {
+        width: 180px;
+        height: 180px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        background-color: #fafafa;
+      }
+
+      .loading,
+      .error {
+        text-align: center;
+        font-style: italic;
+        margin-top: 20px;
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
     <div class="container">
-        <h2>Tìm kiếm ảnh hoa quả</h2>
-        <input type="file" id="imageUpload">
+      <h2>🔍 Tìm kiếm ảnh hoa quả</h2>
+      <div class="upload-box">
+        <input type="file" id="imageUpload" />
         <button onclick="uploadImage()">Tìm kiếm</button>
-        <div id="result"></div>
+      </div>
+      <div id="result"></div>
     </div>
 
     <script>
-        function uploadImage() {
-            let input = document.getElementById("imageUpload");
-            let file = input.files[0];
-            if (!file) {
-                alert("Vui lòng chọn một ảnh!");
-                return;
+      function uploadImage() {
+        let input = document.getElementById("imageUpload");
+        let file = input.files[0];
+        if (!file) {
+          alert("Vui lòng chọn một ảnh!");
+          return;
+        }
+
+        let formData = new FormData();
+        formData.append("file", file);
+
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "<p class='loading'>⏳ Đang xử lý ảnh...</p>";
+
+        fetch("/search", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(data.error);
+              return;
             }
 
-            let formData = new FormData();
-            formData.append("file", file);
-
-            fetch("/search", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-
-                let resultDiv = document.getElementById("result");
-                resultDiv.innerHTML = `<h3>Ảnh đã tải lên:</h3>
-                                       <img src="static/uploads/${data.uploaded_image}" width="200">
-                                       <h3>Kết quả:</h3>`;
-
-                data.results.forEach(item => {
-                    resultDiv.innerHTML += `<div>
-                                                <p>Similarity: ${item.similarity.toFixed(4)}</p>
-                                                <img src="${item.path}" width="200">
-                                            </div>`;
-                });
-            })
-            .catch(error => console.error("Lỗi:", error));
-        }
+            resultDiv.innerHTML = `
+              <h3>Ảnh đã tải lên:</h3>
+              <div class="grid">
+                <div class="result-item">
+                  <img class="image" src="static/uploads/${
+                    data.uploaded_image
+                  }">
+                  <p>Ảnh gốc</p>
+                </div>
+              </div>
+              <h3>Kết quả tương tự:</h3>
+              <div class="grid">
+                ${data.results
+                  .map(
+                    (item) => `
+                  <div class="result-item">
+                    <img class="image" src="${item.path}">
+                    <p>Similarity: ${item.similarity.toFixed(4)}</p>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>`;
+          })
+          .catch((error) => {
+            console.error("Lỗi:", error);
+            resultDiv.innerHTML =
+              "<p class='error'>❌ Đã xảy ra lỗi khi xử lý ảnh.</p>";
+          });
+      }
     </script>
-</body>
+  </body>
 </html>

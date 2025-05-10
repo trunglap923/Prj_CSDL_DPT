@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify, send_from_directory
 from search import find_similar_images
-from PIL import Image
+import cv2
 import os
 import shutil
 
@@ -32,8 +32,18 @@ def search_image():
     file.save(file_path)
 
     # Tìm ảnh tương tự
-    image = Image.open(file_path).convert("RGB")
-    results = find_similar_images(image)
+    image = cv2.imread(file_path)
+    final_results = find_similar_images(image, metric='euclidean', top_k=7)
+    query_vector = final_results["vector_query"]
+    results = final_results["results"]
+    
+    # In ra vector query và vector top_k ảnh trong database
+    top_k_vectors = [result["vector"] for result in results]
+    
+    print("Query Vector:", query_vector)
+    print("Top K Vectors:")
+    for i, vector in enumerate(top_k_vectors):
+        print(f"Vector {i+1}:", vector)
 
     return jsonify({"results": results, "uploaded_image": file.filename})
 
