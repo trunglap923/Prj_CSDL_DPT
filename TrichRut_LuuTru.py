@@ -10,6 +10,9 @@ from extract_features import extract_features
     
 # ========== Lưu vào SQLite ==========
 def insert_image(image_path, feature_vector):
+    # Nếu chưa có thư mục database thì tạo mới
+    if not os.path.exists("database"):
+        os.makedirs("database")
     conn = sqlite3.connect("database/image_database.db")
     cursor = conn.cursor()
 

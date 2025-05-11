@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from skimage.feature import local_binary_pattern, graycomatrix, graycoprops
 from skimage.filters import gabor
+from sklearn.preprocessing import normalize
 import cv2
 
 # ========== Tham số cho LBP và GLCM ==========
@@ -13,7 +14,7 @@ LBP_POINTS = 8 * LBP_RADIUS
 # ========== Đặc trưng HSV ==========
 def extract_hsv_features(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    hist_h = cv2.calcHist([hsv], [0], None, [16], [0, 180])
+    hist_h = cv2.calcHist([hsv], [0], None, [16], [0, 256])
     hist_s = cv2.calcHist([hsv], [1], None, [16], [0, 256])
     hist_v = cv2.calcHist([hsv], [2], None, [16], [0, 256])
     hist = np.concatenate([hist_h, hist_s, hist_v]).flatten()
@@ -84,26 +85,12 @@ def extract_gabor_features(image, frequencies=[0.1, 0.2, 0.3], thetas=[0, np.pi/
             features.extend([mean_val, std_val])
     return np.array(features)
 
-# ========== Đặc trưng GLCM ==========
-# def extract_glcm_features(image):
-#     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#     glcm = graycomatrix(gray, distances=GLCM_DISTANCES, angles=GLCM_ANGLES, levels=256, symmetric=True, normed=True)
-#     features = [
-#         # graycoprops(glcm, 'contrast')[0, 0],
-#         graycoprops(glcm, 'correlation')[0, 0],
-#         graycoprops(glcm, 'energy')[0, 0],
-#         graycoprops(glcm, 'homogeneity')[0, 0],
-#     ]
-#     return np.array(features)
-
-# ========== Tổng hợp đặc trưng ==========
 def extract_features(image):
     image = cv2.resize(image, (100, 100))
-    hsv_feat = extract_hsv_features(image)
-    region_hist_feat = extract_color_histogram(image)
-    lbp_feat = extract_lbp_features(image)
-    gabor_feat = extract_gabor_features(image)
-    
-    combined = np.concatenate((hsv_feat * 1.0, region_hist_feat * 1.0, lbp_feat * 3.0, gabor_feat * 5.0))
-    return combined
 
+    hsv = normalize(extract_hsv_features(image).reshape(1, -1))[0] * 0.45
+    hist = normalize(extract_color_histogram(image).reshape(1, -1))[0] * 0.15
+    lbp = normalize(extract_lbp_features(image).reshape(1, -1))[0] * 1.0
+    gabor = normalize(extract_gabor_features(image).reshape(1, -1))[0] * 0.75
+
+    return np.concatenate([hsv, hist, lbp, gabor])
