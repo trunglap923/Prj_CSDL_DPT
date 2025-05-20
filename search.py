@@ -24,7 +24,7 @@ def chi_square_distance(p, q, eps=1e-10):
     return 0.5 * np.sum(((p - q) ** 2) / (p + q + eps))
 
 # Tìm ảnh tương tự
-def find_similar_images(image, metric='cosine', top_k=3):
+def find_similar_images(image, metric='euclidean', top_k=3):
     query_vector = extract_features(image).reshape(1, -1)
     image_paths, feature_vectors = load_database()
     
