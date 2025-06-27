@@ -29,9 +29,6 @@ def load_database():
 
     return image_paths, np.array(hsv_vectors), np.array(spatial_hsv_vectors), np.array(lbp_vectors), np.array(spatial_lbp_vectors)
 
-def chi_square_distance(p, q, eps=1e-10):
-    return 0.5 * np.sum(((p - q) ** 2) / (p + q + eps))
-
 # Tìm ảnh tương tự
 def find_similar_images(image, metric='euclidean', top_k=3):
     # Trích xuất đặc trưng truy vấn
@@ -47,8 +44,6 @@ def find_similar_images(image, metric='euclidean', top_k=3):
         elif metric == 'euclidean':
             dists = euclidean_distances(query.reshape(1, -1), db_vectors)[0]
             return dists
-        elif metric == 'chi_square':
-            return np.array([chi_square_distance(query, vec) for vec in db_vectors])
         else:
             raise ValueError("Unsupported metric: " + metric)
 

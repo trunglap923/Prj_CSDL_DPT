@@ -6,57 +6,56 @@ from sklearn.preprocessing import normalize
 import cv2
 import math
 
-
 # ========== Đặc trưng HSV ==========
+# Chuyển RGB sang HSV dùng hàm thủ công
+def rgb_to_hsv(pixel):
+    r, g, b = pixel
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+    v = max(r, g, b)
+    delta = v - min(r, g, b)
+
+    if delta == 0:
+        h = 0
+        s = 0
+    else:
+        s = delta / v
+        if r == v:
+            h = (g - b) / delta
+        elif g == v:
+            h = 2 + (b - r) / delta
+        else:
+            h = 4 + (r - g) / delta
+        h = (h / 6) % 1.0
+
+    return [int(h * 180), int(s * 255), int(v * 255)]
+
+def covert_image_rgb_to_hsv(img):
+    hsv_image = []
+    for i in img:
+        hsv_row = []
+        for j in i:
+            hsv_row.append(rgb_to_hsv(j))
+        hsv_image.append(hsv_row)
+    return np.array(hsv_image)
+
+def my_calcHist(image, channels, histSize, ranges):
+    hist = np.zeros(histSize, dtype=np.int64)
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            bin_vals = [image[i, j, c] for c in channels]
+            bin_idxs = [
+                (bin_vals[c] - ranges[c][0]) * histSize[c] //
+                (ranges[c][1] - ranges[c][0])
+                for c in range(len(channels))
+            ]
+            # Đảm bảo không vượt quá chỉ số
+            bin_idxs = [min(idx, histSize[i] - 1) for i, idx in enumerate(bin_idxs)]
+            hist[tuple(bin_idxs)] += 1
+    return hist
+
 def extract_hsv_features(image):
     # Chuyển đổi ảnh từ BGR (OpenCV) sang RGB
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Chuyển RGB sang HSV dùng hàm thủ công
-    def rgb_to_hsv(pixel):
-        r, g, b = pixel
-        r, g, b = r / 255.0, g / 255.0, b / 255.0
-        v = max(r, g, b)
-        delta = v - min(r, g, b)
-
-        if delta == 0:
-            h = 0
-            s = 0
-        else:
-            s = delta / v
-            if r == v:
-                h = (g - b) / delta
-            elif g == v:
-                h = 2 + (b - r) / delta
-            else:
-                h = 4 + (r - g) / delta
-            h = (h / 6) % 1.0
-
-        return [int(h * 180), int(s * 255), int(v * 255)]
-
-    def covert_image_rgb_to_hsv(img):
-        hsv_image = []
-        for i in img:
-            hsv_row = []
-            for j in i:
-                hsv_row.append(rgb_to_hsv(j))
-            hsv_image.append(hsv_row)
-        return np.array(hsv_image)
-
-    def my_calcHist(image, channels, histSize, ranges):
-        hist = np.zeros(histSize, dtype=np.int64)
-        for i in range(image.shape[0]):
-            for j in range(image.shape[1]):
-                bin_vals = [image[i, j, c] for c in channels]
-                bin_idxs = [
-                    (bin_vals[c] - ranges[c][0]) * histSize[c] //
-                    (ranges[c][1] - ranges[c][0])
-                    for c in range(len(channels))
-                ]
-                # Đảm bảo không vượt quá chỉ số
-                bin_idxs = [min(idx, histSize[i] - 1) for i, idx in enumerate(bin_idxs)]
-                hist[tuple(bin_idxs)] += 1
-        return hist
 
     hsv_image = covert_image_rgb_to_hsv(image_rgb)
     channels = [0, 1, 2]
@@ -76,9 +75,10 @@ def extract_color_histogram(image, bins=256, regions=4):
     - bins: Số lượng bins cho mỗi histogram.
     - regions: Số vùng chia theo chiều ngang và dọc (regions x regions).
     """
-    # Chuyển ảnh từ RGB sang HSV
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-
+    # Chuyển đổi ảnh từ BGR (OpenCV) sang RGB
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    hsv_image = covert_image_rgb_to_hsv(image_rgb)
     height, width, _ = hsv_image.shape
     region_height = height // regions
     region_width = width // regions
@@ -97,20 +97,33 @@ def extract_color_histogram(image, bins=256, regions=4):
             # Cắt vùng từ ảnh HSV
             region = hsv_image[start_y:end_y, start_x:end_x]
 
-            # Tính histogram cho từng kênh màu HSV (H, S, V)
-            hist_h = cv2.calcHist([region], [0], None, [bins], [0, 180])  # Hue: 0-179
-            hist_s = cv2.calcHist([region], [1], None, [bins], [0, 256])  # Saturation: 0-255
-            hist_v = cv2.calcHist([region], [2], None, [bins], [0, 256])  # Value: 0-255
+            
+            channels = [0, 1, 2]
+            histSize = [12, 12, 3]
+            ranges = [(0, 180), (0, 256), (0, 256)]
 
-            # Chuẩn hóa histogram
-            hist_h = cv2.normalize(hist_h, hist_h).flatten()
-            hist_s = cv2.normalize(hist_s, hist_s).flatten()
-            hist_v = cv2.normalize(hist_v, hist_v).flatten()
+            def my_calcHist(image, channels, histSize, ranges):
+                hist = np.zeros(histSize, dtype=np.int64)
+                for i in range(image.shape[0]):
+                    for j in range(image.shape[1]):
+                        bin_vals = [image[i, j, c] for c in channels]
+                        bin_idxs = [
+                            (bin_vals[c] - ranges[c][0]) * histSize[c] //
+                            (ranges[c][1] - ranges[c][0])
+                            for c in range(len(channels))
+                        ]
+                        # Đảm bảo không vượt quá chỉ số
+                        bin_idxs = [min(idx, histSize[i] - 1) for i, idx in enumerate(bin_idxs)]
+                        hist[tuple(bin_idxs)] += 1
+                return hist
+
+            histogram = my_calcHist(region, channels, histSize, ranges)
+            hist_flat = histogram.flatten().astype("float")
+            hist_flat /= (hist_flat.sum() + 1e-7)  # Chuẩn hóa
 
             # Kết hợp histogram của vùng vào vector đặc trưng
-            feature_vector.extend(hist_h)
-            feature_vector.extend(hist_s)
-            feature_vector.extend(hist_v)
+            feature_vector.extend(histogram)
+
 
     return np.array(feature_vector)
 
@@ -248,12 +261,16 @@ def extract_features(image):
 
 
 def main():
-    image_path = 'Image_test/0effc19dfa42fbad48ec445fa846f408.jpg'
+    image_path = 'Image_test/2.png'
 
     image = cv2.imread(image_path)
 
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    result = extract_features(image_rgb)
+    hsv, spatial_hsv, lbp, spatial_lbp = extract_features(image_rgb)
+    print(len(hsv))
+    print(len(spatial_hsv))
+    print(len(lbp))
+    print(len(spatial_lbp))
     
 if __name__ == '__main__':
     main()
