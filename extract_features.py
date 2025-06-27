@@ -4,83 +4,8 @@ from skimage.feature import local_binary_pattern, graycomatrix, graycoprops, hog
 from skimage.filters import gabor
 from sklearn.preprocessing import normalize
 import cv2
+import math
 
-# ========== Tham số và hàm LBP ==========
-LBP_RADIUS = 1
-LBP_POINTS = 8 * LBP_RADIUS
-class LBP(object):
-    def __init__(self, radius=1, npoints=8, counter_clockwise=True, interpolation="bilinear"):
-        self.radius = radius
-        self.npoints = npoints
-        self.interpolation = interpolation
-        self.counter_clockwise= counter_clockwise
-        assert self.radius > 0 and self.npoints > 0
-        assert interpolation in ("bilinear", "nearest")
-        self.get_pixel_func = self._get_pixel_nearest if self.interpolation == "nearest" else self._get_pixel_bilinear
-        
-        start_angle_radian = 0
-        angle_radian = 2*math.pi/npoints
-        circle_direction = 1 if counter_clockwise else -1
-        neighbor_positions = []
-        for pos in range(self.npoints):
-            delta_x = math.cos(start_angle_radian+circle_direction*pos*angle_radian) * self.radius
-            delta_y = -(math.sin(start_angle_radian+circle_direction*pos*angle_radian) * self.radius)
-            neighbor_positions.append((delta_x, delta_y))
-        neighbor_positions.reverse()
-        self.neighbor_positions = neighbor_positions
-        assert len(self.neighbor_positions) == npoints
-        pass
-    
-    def _get_pixel_nearest(self, image, x, y, w, h):
-        xx = round(x)
-        yy = round(y)
-        if xx < 0 or yy < 0 or xx >= w or yy >= h:
-            return 0
-        else:
-            return image[yy, xx]
-    
-    def _get_pixel_bilinear(self, image, x, y, w, h):
-        """
-            x: float. Eg: 0.3
-            y: float. Eg: 0.7
-        """
-        xmin, xmax = math.floor(x), math.ceil(x) # 0, 1
-        ymin, ymax = math.floor(y), math.ceil(y) # 0, 1
-        
-        intensity_top_left = 0 if xmin<0 or ymin<0 or xmin>=w or ymin>=h else image[ymin, xmin]
-        intensity_top_right = 0 if xmax<0 or ymin<0 or xmax>=w or ymin>=h else image[ymin, xmax]
-        intensity_bottom_left = 0 if xmin<0 or ymax<0 or xmin>=w or ymax>=h else image[ymax, xmin]
-        intensity_bottom_right = 0 if xmax<0 or ymax<0 or xmax>=w or ymax>=h else image[ymax, xmax]
-        
-        weight_x = x - xmin
-        weight_y = y - ymin
-        
-        intensity_at_top = (1-weight_x) * intensity_top_left + weight_x * intensity_top_right
-        intensity_at_bottom= (1-weight_x) * intensity_bottom_left + weight_x * intensity_bottom_right
-        
-        final_intensity = (1-weight_y) * intensity_at_top + weight_y * intensity_at_bottom        
-        return final_intensity
-    
-    def __call__(self, image):
-        assert len(image.shape) == 2
-        h, w = image.shape
-        result = np.zeros([h, w])
-        for y in range(h):
-            for x in range(w):
-                center_intensity = image[y, x]
-                binary_vector = [0] * self.npoints
-                for npos in range(self.npoints):
-                    new_x = x + self.neighbor_positions[npos][0]
-                    new_y = y + self.neighbor_positions[npos][1]              
-                    
-                    neighbor_intensity = self.get_pixel_func(image, new_x, new_y, w, h)
-                    
-                    if center_intensity <= neighbor_intensity:
-                        binary_vector[npos] = 1
-                binary_str = "".join([str(e) for e in binary_vector]) # '00001001'
-                decimal_value = int(binary_str, 2) # convert binary string to decimal
-                result[y, x] = decimal_value
-        return result
 
 # ========== Đặc trưng HSV ==========
 def extract_hsv_features(image):
@@ -143,15 +68,6 @@ def extract_hsv_features(image):
     hist_flat /= (hist_flat.sum() + 1e-7)  # Chuẩn hóa
     return hist_flat
 
-# ========== Đặc trưng HSV ==========
-# def extract_hsv_features(image):
-#     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-#     hist_h = cv2.calcHist([hsv], [0], None, [16], [0, 256])
-#     hist_s = cv2.calcHist([hsv], [1], None, [16], [0, 256])
-#     hist_v = cv2.calcHist([hsv], [2], None, [16], [0, 256])
-#     hist = np.concatenate([hist_h, hist_s, hist_v]).flatten()
-#     return cv2.normalize(hist, hist).flatten()
-
 # ========== Đặc trưng Histogram theo vùng ==========
 def extract_color_histogram(image, bins=256, regions=4):
     """
@@ -199,6 +115,79 @@ def extract_color_histogram(image, bins=256, regions=4):
     return np.array(feature_vector)
 
 # ========== Đặc trưng LBP ==========
+# ========== Tham số và hàm LBP ==========
+LBP_RADIUS = 1
+LBP_POINTS = 8 * LBP_RADIUS
+class LBP(object):
+    def __init__(self, radius=1, npoints=8, counter_clockwise=True, interpolation="bilinear"):
+        self.radius = radius
+        self.npoints = npoints
+        self.interpolation = interpolation
+        self.counter_clockwise= counter_clockwise
+        assert self.radius > 0 and self.npoints > 0
+        assert interpolation in ("bilinear", "nearest")
+        self.get_pixel_func = self._get_pixel_nearest if self.interpolation == "nearest" else self._get_pixel_bilinear
+        
+        start_angle_radian = 0
+        angle_radian = 2*math.pi/npoints
+        circle_direction = 1 if counter_clockwise else -1
+        neighbor_positions = []
+        for pos in range(self.npoints):
+            delta_x = math.cos(start_angle_radian+circle_direction*pos*angle_radian) * self.radius
+            delta_y = -(math.sin(start_angle_radian+circle_direction*pos*angle_radian) * self.radius)
+            neighbor_positions.append((delta_x, delta_y))
+        neighbor_positions.reverse()
+        self.neighbor_positions = neighbor_positions
+        assert len(self.neighbor_positions) == npoints
+        pass
+    
+    def _get_pixel_nearest(self, image, x, y, w, h):
+        xx = round(x)
+        yy = round(y)
+        if xx < 0 or yy < 0 or xx >= w or yy >= h:
+            return 0
+        else:
+            return image[yy, xx]
+    
+    def _get_pixel_bilinear(self, image, x, y, w, h):
+        xmin, xmax = math.floor(x), math.ceil(x)
+        ymin, ymax = math.floor(y), math.ceil(y)
+        
+        intensity_top_left = 0 if xmin<0 or ymin<0 or xmin>=w or ymin>=h else image[ymin, xmin]
+        intensity_top_right = 0 if xmax<0 or ymin<0 or xmax>=w or ymin>=h else image[ymin, xmax]
+        intensity_bottom_left = 0 if xmin<0 or ymax<0 or xmin>=w or ymax>=h else image[ymax, xmin]
+        intensity_bottom_right = 0 if xmax<0 or ymax<0 or xmax>=w or ymax>=h else image[ymax, xmax]
+        
+        weight_x = x - xmin
+        weight_y = y - ymin
+        
+        intensity_at_top = (1-weight_x) * intensity_top_left + weight_x * intensity_top_right
+        intensity_at_bottom= (1-weight_x) * intensity_bottom_left + weight_x * intensity_bottom_right
+        
+        final_intensity = (1-weight_y) * intensity_at_top + weight_y * intensity_at_bottom        
+        return final_intensity
+    
+    def __call__(self, image):
+        assert len(image.shape) == 2
+        h, w = image.shape
+        result = np.zeros([h, w])
+        for y in range(h):
+            for x in range(w):
+                center_intensity = image[y, x]
+                binary_vector = [0] * self.npoints
+                for npos in range(self.npoints):
+                    new_x = x + self.neighbor_positions[npos][0]
+                    new_y = y + self.neighbor_positions[npos][1]              
+                    
+                    neighbor_intensity = self.get_pixel_func(image, new_x, new_y, w, h)
+                    
+                    if center_intensity <= neighbor_intensity:
+                        binary_vector[npos] = 1
+                binary_str = "".join([str(e) for e in binary_vector]) # '00001001'
+                decimal_value = int(binary_str, 2) # convert binary string to decimal
+                result[y, x] = decimal_value
+        return result
+    
 # spatial_hist 
 def lbp_spatial_histogram(lbp_image, grid_x=4, grid_y=4, npoints=8):
     h, w = lbp_image.shape
@@ -232,31 +221,17 @@ def extract_lbp_features(image, grid_x=4, grid_y=4, npoints=8):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
     # Dùng thư viện
-    lbp_result = local_binary_pattern(gray, LBP_POINTS, LBP_RADIUS, method="default") 
+    # lbp_result = local_binary_pattern(gray, LBP_POINTS, LBP_RADIUS, method="default") 
     
     # Code chay
-    # lbp = LBP()
-    # lbp_result = lbp(gray)
+    lbp = LBP()
+    lbp_result = lbp(gray)
     
     if grid_x == 1 and grid_x == 1:
         feature_vector = lbp_to_feature_vector(lbp_result, npoints=npoints)
     else:
         feature_vector = lbp_spatial_histogram(lbp_result, grid_x=grid_x, grid_y=grid_y, npoints=npoints)
     return feature_vector
-
-# ========== Đặc trưng HOG ==========
-def extract_hog_features(image, pixels_per_cell=(8, 8), cells_per_block=(2, 2), orientations=9):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    features = hog(gray,
-                   orientations=orientations,
-                   pixels_per_cell=pixels_per_cell,
-                   cells_per_block=cells_per_block,
-                   block_norm='L2-Hys',
-                   transform_sqrt=True,
-                   feature_vector=True)
-    
-    return features
 
 # # ========== Tổng hợp đặc trưng ==========
 
@@ -267,7 +242,6 @@ def extract_features(image):
     spatial_hsv = normalize(extract_color_histogram(image).reshape(1, -1))[0]
     lbp = normalize(extract_lbp_features(image, grid_x=1, grid_y=1, npoints=8).reshape(1, -1))[0]
     spatial_lbp = normalize(extract_lbp_features(image, grid_x=4, grid_y=4, npoints=8).reshape(1, -1))[0]
-    # hog_feat = normalize(extract_hog_features(image).reshape(1, -1))[0]
     
     return np.concatenate([hsv, spatial_hsv, lbp, spatial_lbp])
 
