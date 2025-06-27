@@ -243,8 +243,8 @@ def extract_features(image):
     lbp = normalize(extract_lbp_features(image, grid_x=1, grid_y=1, npoints=8).reshape(1, -1))[0]
     spatial_lbp = normalize(extract_lbp_features(image, grid_x=4, grid_y=4, npoints=8).reshape(1, -1))[0]
     
-    return np.concatenate([hsv, spatial_hsv, lbp, spatial_lbp])
-
+    # return np.concatenate([hsv, spatial_hsv, lbp, spatial_lbp])
+    return hsv, spatial_hsv, lbp, spatial_lbp
 
 
 def main():

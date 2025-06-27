@@ -9,8 +9,7 @@ import pickle
 from extract_features import extract_features
     
 # ========== Lưu vào SQLite ==========
-def insert_image(image_path, feature_vector):
-    # Nếu chưa có thư mục database thì tạo mới
+def insert_image(image_path, hsv, spatial_hsv, lbp, spatial_lbp):
     if not os.path.exists("database"):
         os.makedirs("database")
     conn = sqlite3.connect("database/image_database.db")
@@ -20,12 +19,23 @@ def insert_image(image_path, feature_vector):
         CREATE TABLE IF NOT EXISTS images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             path TEXT,
-            feature_vector BLOB
+            hsv_feature BLOB,
+            spatial_hsv_feature BLOB,
+            lbp_feature BLOB,
+            spatial_lbp_feature BLOB
         )
     """)
     
-    feature_blob = pickle.dumps(feature_vector)
-    cursor.execute("INSERT INTO images (path, feature_vector) VALUES (?, ?)", (image_path, feature_blob))
+    cursor.execute("""
+        INSERT INTO images (path, hsv_feature, spatial_hsv_feature, lbp_feature, spatial_lbp_feature)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        image_path,
+        pickle.dumps(hsv),
+        pickle.dumps(spatial_hsv),
+        pickle.dumps(lbp),
+        pickle.dumps(spatial_lbp)
+    ))
     conn.commit()
     conn.close()
 
@@ -36,8 +46,8 @@ image_files = [f for f in os.listdir(image_folder) if f.lower().endswith((".jpg"
 for img_file in image_files:
     img_path = os.path.join(image_folder, img_file)
     image = cv2.imread(img_path)
-    features = extract_features(image)
-    insert_image(img_path, features)
+    hsv, spatial_hsv, lbp, spatial_lbp = extract_features(image)
+    insert_image(img_path, hsv, spatial_hsv, lbp, spatial_lbp)
     print(f"✅ Đã lưu đặc trưng của ảnh {img_file} vào database.")
 
 print("🎉 Hoàn tất lưu trữ đặc trưng tất cả ảnh.")

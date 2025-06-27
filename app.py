@@ -34,14 +34,14 @@ def search_image():
     # Tìm ảnh tương tự
     image = cv2.imread(file_path)
     final_results = find_similar_images(image, metric='euclidean', top_k=3)
-    query_vector = final_results["vector_query"]
+    # query_vector = final_results["vector_query"]
     results = final_results["results"]
     
     # In ra vector query và vector top_k ảnh trong database
-    top_k_vectors = [result["vector"] for result in results]
+    # top_k_vectors = [result["vector"] for result in results]
     
     # print("Query Vector:", query_vector)
-    print(len(query_vector))
+    # print(len(query_vector))
     # print("Top K Vectors:")
     # for i, vector in enumerate(top_k_vectors):
     #     print(f"Vector {i+1}:", vector)
